@@ -7,3 +7,6 @@ node_modules/
 _gh-auth-out.txt
 _gh-auth-err.txt
 *.log
+
+_vercel-login-*.txt
+_gh-auth-*.txt
