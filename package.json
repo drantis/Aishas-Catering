@@ -1,0 +1,13 @@
+{
+  "name": "aishas-catering",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack catering ordering site — immersive menu, cart, checkout, and order API.",
+  "scripts": {
+    "dev": "npx --yes serve . -l 3000",
+    "start": "npx --yes serve . -l 3000"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

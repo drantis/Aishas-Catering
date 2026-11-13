@@ -1,0 +1,9 @@
+.DS_Store
+Thumbs.db
+node_modules/
+.vercel/
+.env
+.env.*
+_gh-auth-out.txt
+_gh-auth-err.txt
+*.log

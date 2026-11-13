@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Aisha's Catering</title>
+    <meta
+      name="description"
+      content="Order catering from Aisha's Catering. Warm food for dinners, gatherings, and celebrations."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main" aria-label="Skip to content" data-label="Skip to content"></a>
+
+    <header class="site-header">
+      <div class="shell header-inner">
+        <div class="brand-lockup">
+          <a class="brand" href="index.html">
+            <span class="brand-mark">A</span>
+            <span class="brand-name">Aisha's Catering</span>
+          </a>
+          <span class="halal-sticker halal-sticker--nav" title="Halal kitchen">
+            <img src="images/halal-sticker.png" alt="Halal" width="38" height="38" />
+          </span>
+        </div>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-nav-toggle>
+          <span class="sr-only">Menu</span>
+          <span></span><span></span>
+        </button>
+        <nav class="site-nav" id="site-nav" data-nav>
+          <a href="menu.html">Menu</a>
+          <a href="index.html#favorites">Favorites</a>
+          <button type="button" class="nav-cta" data-cart-open>
+            Cart <span class="cart-count" data-cart-count>0</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <span class="halal-sticker halal-sticker--hero" title="Halal kitchen">
+          <img src="images/halal-sticker.png" alt="Halal kitchen" width="120" height="120" />
+        </span>
+        <div class="shell hero-copy">
+          <p class="eyebrow">Home-cooked, ready for your table</p>
+          <h1>Aisha's Catering</h1>
+          <p class="lede">
+            Open the menu, swipe through the dishes, add trays to your order, and checkout.
+            Food that feels like someone cooked for people they love.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="menu.html">Open the menu</a>
+            <a class="btn btn-soft" href="#favorites">See favorites</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="favorites">
+        <div class="shell">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">From the kitchen</p>
+              <h2>Guest favorites</h2>
+            </div>
+            <a class="text-link" href="menu.html">Full menu</a>
+          </div>
+          <div class="feature-grid" data-featured-menu></div>
+        </div>
+      </section>
+
+      <section class="band band-deep">
+        <div class="shell how-row">
+          <div>
+            <p class="eyebrow">How ordering works</p>
+            <h2>Browse. Add. Checkout.</h2>
+          </div>
+          <ol class="steps">
+            <li>
+              <span>1</span>
+              <div>
+                <h3>Enter the menu loop</h3>
+                <p>A quiet infinite backdrop, then the dishes.</p>
+              </div>
+            </li>
+            <li>
+              <span>2</span>
+              <div>
+                <h3>Scroll the plates</h3>
+                <p>Scroll the menu page — each dish moves into focus as you go.</p>
+              </div>
+            </li>
+            <li>
+              <span>3</span>
+              <div>
+                <h3>Checkout</h3>
+                <p>Pickup or delivery, time, notes — place the order.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="band cta-band">
+        <div class="shell cta-inner">
+          <h2>Ready to order?</h2>
+          <p>Open the menu and build your table.</p>
+          <a class="btn btn-primary" href="menu.html">Start ordering</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <div class="footer-brand-row">
+            <div>
+              <p class="brand-name">Aisha's Catering</p>
+              <p class="muted">Placeholder City</p>
+            </div>
+            <span class="halal-sticker halal-sticker--footer" title="Halal kitchen">
+              <img src="images/halal-sticker.png" alt="Halal" width="50" height="50" />
+            </span>
+          </div>
+        </div>
+        <div>
+          <p class="footer-label">Find us</p>
+          <p class="muted">Address placeholder<br />City, Region</p>
+        </div>
+        <div>
+          <p class="footer-label">Call / text</p>
+          <p class="muted"><a href="tel:+10000000000">(000) 000-0000</a></p>
+        </div>
+        <div>
+          <p class="footer-label">Order</p>
+          <p class="muted footer-links">
+            <a href="menu.html">Menu</a>
+            <a href="checkout.html">Checkout</a>
+          </p>
+        </div>
+      </div>
+      <div class="shell footer-base">
+        <p>© <span data-year></span> Aisha's Catering</p>
+      </div>
+    </footer>
+
+    <aside class="cart-drawer" data-cart-drawer aria-hidden="true">
+      <div class="cart-panel">
+        <div class="cart-head">
+          <h2>Your order</h2>
+          <button type="button" class="icon-btn" data-cart-close aria-label="Close cart">×</button>
+        </div>
+        <div class="cart-body" data-cart-body></div>
+        <div class="cart-foot">
+          <div class="cart-total">
+            <span>Total</span>
+            <strong data-cart-total>$0</strong>
+          </div>
+          <a class="btn btn-primary btn-block" href="checkout.html">Go to checkout</a>
+        </div>
+      </div>
+    </aside>
+
+    <script src="menu-data.js"></script>
+    <script src="cart.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>
