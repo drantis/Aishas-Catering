@@ -2,7 +2,11 @@
 
 Full-stack catering ordering site — immersive 3D menu, cart, checkout, and order API.
 
-**Live:** _(Vercel URL after deploy)_
+**Repo:** https://github.com/drantis/Aishas-Catering
+
+**Live (GitHub Pages):** https://drantis.github.io/Aishas-Catering/
+
+**Vercel:** pending (Hotmail verification down) · API routes ready when Vercel is unlocked.
 
 ## Stack
 

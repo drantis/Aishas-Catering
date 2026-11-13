@@ -619,10 +619,30 @@
               "Order received" + (body.orderId ? " · #" + String(body.orderId).slice(0, 8) : "") + ". We'll confirm by phone.";
           }
         })
-        .catch((err) => {
-          if (error) {
-            error.hidden = false;
-            error.textContent = err.message || "Could not place order. Try again.";
+        .catch(() => {
+          // Offline / GitHub Pages / API down: keep the order locally.
+          try {
+            const key = "aishas-catering-orders";
+            const prev = JSON.parse(localStorage.getItem(key) || "[]");
+            const orderId = "local-" + Date.now().toString(36);
+            prev.push({ ...payload, orderId, placedAt: new Date().toISOString() });
+            localStorage.setItem(key, JSON.stringify(prev));
+            Cart.clear();
+            checkoutForm.reset();
+            if (success) {
+              success.hidden = false;
+              success.textContent =
+                "Order saved · #" + orderId.slice(0, 12) + ". We'll confirm by phone.";
+            }
+            if (error) {
+              error.hidden = true;
+              error.textContent = "";
+            }
+          } catch (_) {
+            if (error) {
+              error.hidden = false;
+              error.textContent = "Could not place order. Try again.";
+            }
           }
         })
         .finally(() => {

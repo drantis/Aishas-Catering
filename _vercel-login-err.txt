@@ -1,0 +1,5 @@
+Vercel CLI 33.4.0
+> Please visit the following URL in your web browser:
+> https://vercel.com/api/registration/login-with-github?mode=login&next=https%3A%2F%2Fvercel.com%2Fnotifications%2Fcli-login-oob
+> After login is complete, enter the verification code printed in your browser.
+? Verification code: [21D[21C
