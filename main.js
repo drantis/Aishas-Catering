@@ -1,467 +1,435 @@
 (function () {
-  const menu = window.AISHA_MENU || { categories: [], items: [] };
-  const Cart = window.AishaCart;
+  "use strict";
 
-  document.querySelectorAll("[data-year]").forEach((el) => {
+  const data = window.AISHA_MENU || { items: [] };
+  const Cart = window.AishaCart;
+  const biz = data.business || {};
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
+
+  $$("[data-year]").forEach((el) => {
     el.textContent = String(new Date().getFullYear());
   });
 
-  const toggle = document.querySelector("[data-nav-toggle]");
-  const nav = document.querySelector("[data-nav]");
-  if (toggle && nav) {
-    toggle.addEventListener("click", () => {
-      const open = nav.classList.toggle("is-open");
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    });
+  /* ---------- Business details (set once in menu-data.js) ---------- */
+
+  const phone = (biz.phone || "").trim();
+  const email = (biz.email || "").trim();
+  const area = (biz.area || "").trim();
+
+  $$('[data-biz="phone"]').forEach((el) => {
+    if (!phone) return;
+    el.textContent = phone;
+    el.href = "tel:" + phone.replace(/[^\d+]/g, "");
+    el.hidden = false;
+  });
+  $$('[data-biz="email"]').forEach((el) => {
+    if (!email) return;
+    el.textContent = email;
+    el.href = "mailto:" + email;
+    el.hidden = false;
+  });
+  $$('[data-biz="area"]').forEach((el) => {
+    if (!area) return;
+    el.textContent = area;
+    el.hidden = false;
+  });
+  $$("[data-biz-contact]").forEach((el) => {
+    el.hidden = !(phone || email);
+  });
+
+  if (!Cart) return;
+
+  /* ---------- Shared pieces ---------- */
+
+  function photo(item, eager) {
+    const wrap = document.createElement("div");
+    wrap.className = "photo";
+    const img = document.createElement("img");
+    img.src = item.image;
+    img.alt = item.name;
+    img.decoding = "async";
+    img.loading = eager ? "eager" : "lazy";
+    img.draggable = false;
+    wrap.appendChild(img);
+    return wrap;
   }
 
-  function photo(label, src) {
-    if (src) {
-      const wrap = document.createElement("div");
-      wrap.className = "photo";
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = label;
-      img.loading = "lazy";
-      img.decoding = "async";
-      wrap.appendChild(img);
-      return wrap;
-    }
-    const el = document.createElement("div");
-    el.className = "photo placeholder-photo";
-    el.setAttribute("data-label", label);
-    el.setAttribute("role", "img");
-    el.setAttribute("aria-label", label + " placeholder");
-    return el;
+  // Minus / quantity / plus. `key` lets focus survive a re-render.
+  function stepper(item, key) {
+    const wrap = document.createElement("div");
+    wrap.className = "stepper";
+    const make = (label, text, action) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = text;
+      btn.setAttribute("aria-label", label + " " + item.name);
+      if (key) btn.dataset.focusKey = key + ":" + action;
+      return btn;
+    };
+    const minus = make("Remove one", "−", "minus");
+    const plus = make("Add one", "+", "plus");
+    const qty = document.createElement("span");
+    qty.className = "stepper-qty";
+    minus.addEventListener("click", () => Cart.add(item.id, -1));
+    plus.addEventListener("click", () => Cart.add(item.id, 1));
+    wrap.append(minus, qty, plus);
+    return { wrap, minus, plus, qty };
   }
 
-  function renderCartUI() {
-    if (!Cart) return;
-    const cart = Cart.read();
-    const list = Cart.lines(cart);
-    const countEls = document.querySelectorAll("[data-cart-count]");
-    const totalEls = document.querySelectorAll("[data-cart-total]");
-    const body = document.querySelector("[data-cart-body]");
+  function orderLine(line, scope) {
+    const row = document.createElement("div");
+    row.className = "order-line";
 
-    countEls.forEach((el) => {
-      el.textContent = String(Cart.count(cart));
-    });
-    totalEls.forEach((el) => {
-      el.textContent = Cart.money(Cart.total(cart));
-    });
+    const info = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = line.name;
+    const meta = document.createElement("p");
+    meta.className = "muted";
+    meta.textContent = Cart.money(line.price) + " each · " + line.serves;
+    info.append(name, meta);
 
-    if (body) {
-      body.innerHTML = "";
-      if (!list.length) {
-        const empty = document.createElement("p");
-        empty.className = "cart-empty";
-        empty.textContent = "Your order is empty. Add something from the menu.";
-        body.appendChild(empty);
-      } else {
-        list.forEach((line) => {
-          const row = document.createElement("div");
-          row.className = "cart-item";
-          row.innerHTML =
-            "<div><strong></strong><p class=\"muted\"></p></div><div class=\"qty-row\"></div>";
-          row.querySelector("strong").textContent = line.name;
-          row.querySelector("p").textContent =
-            Cart.money(line.lineTotal) + " · " + line.serves;
-          const qty = row.querySelector(".qty-row");
-          const minus = document.createElement("button");
-          minus.type = "button";
-          minus.textContent = "−";
-          minus.setAttribute("aria-label", "Fewer " + line.name);
-          minus.addEventListener("click", () => Cart.add(line.id, -1));
-          const n = document.createElement("span");
-          n.textContent = String(line.qty);
-          const plus = document.createElement("button");
-          plus.type = "button";
-          plus.textContent = "+";
-          plus.setAttribute("aria-label", "More " + line.name);
-          plus.addEventListener("click", () => Cart.add(line.id, 1));
-          qty.append(minus, n, plus);
-          body.appendChild(row);
-        });
-      }
-    }
+    const side = document.createElement("div");
+    side.className = "order-line-side";
+    const step = stepper(line, scope + ":" + line.id);
+    step.qty.textContent = String(line.qty);
+    const total = document.createElement("span");
+    total.className = "order-line-total";
+    total.textContent = Cart.money(line.lineTotal);
+    side.append(step.wrap, total);
 
-    const checkoutLines = document.querySelector("[data-checkout-lines]");
-    const checkoutTotal = document.querySelector("[data-checkout-total]");
-    if (checkoutLines) {
-      checkoutLines.innerHTML = "";
-      if (!list.length) {
-        checkoutLines.innerHTML = '<p class="muted">No dishes yet. <a href="menu.html">Open the menu</a>.</p>';
-      } else {
-        list.forEach((line) => {
-          const row = document.createElement("div");
-          row.className = "summary-line";
-          row.innerHTML = "<div><strong></strong><p class=\"muted\"></p></div><div></div>";
-          row.querySelector("strong").textContent = line.name;
-          row.querySelector("p").textContent = line.qty + " × " + Cart.money(line.price);
-          row.children[1].textContent = Cart.money(line.lineTotal);
-          checkoutLines.appendChild(row);
-        });
-      }
-    }
-    if (checkoutTotal) checkoutTotal.textContent = Cart.money(Cart.total(cart));
+    row.append(info, side);
+    return row;
   }
 
-  const drawer = document.querySelector("[data-cart-drawer]");
-  function openCart() {
+  // Re-rendering a list destroys the button that was just pressed. Put focus
+  // back on its replacement so keyboard users keep their place.
+  function rerender(container, build) {
+    const focused = document.activeElement;
+    const key = focused && container.contains(focused) ? focused.dataset.focusKey : null;
+    container.innerHTML = "";
+    build();
+    if (!key) return;
+    const again = container.querySelector('[data-focus-key="' + key + '"]');
+    if (again) again.focus({ preventScroll: true });
+  }
+
+  /* ---------- Order drawer + bottom bar ---------- */
+
+  const drawer = $("[data-cart-drawer]");
+  const cartBody = $("[data-cart-body]");
+  const cartFoot = $("[data-cart-foot]");
+  const orderBar = $("[data-order-bar]");
+  const live = $("[data-cart-live]");
+  let lastOpener = null;
+
+  function openCart(event) {
     if (!drawer) return;
+    lastOpener = event && event.currentTarget ? event.currentTarget : null;
+    drawer.inert = false;
     drawer.setAttribute("aria-hidden", "false");
     document.body.classList.add("cart-open");
-  }
-  function closeCart() {
-    if (!drawer) return;
-    drawer.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("cart-open");
+    const close = $("[data-cart-close]", drawer);
+    if (close) close.focus({ preventScroll: true });
   }
 
-  document.querySelectorAll("[data-cart-open]").forEach((el) => {
-    el.addEventListener("click", openCart);
-  });
-  document.querySelectorAll("[data-cart-close]").forEach((el) => {
-    el.addEventListener("click", closeCart);
-  });
+  function closeCart() {
+    if (!drawer || drawer.getAttribute("aria-hidden") === "true") return;
+    drawer.setAttribute("aria-hidden", "true");
+    drawer.inert = true;
+    document.body.classList.remove("cart-open");
+    if (lastOpener && document.contains(lastOpener) && !lastOpener.closest("[hidden]")) {
+      lastOpener.focus({ preventScroll: true });
+    }
+  }
+
   if (drawer) {
-    drawer.addEventListener("click", (e) => {
-      if (e.target === drawer) closeCart();
+    drawer.inert = true;
+    $$("[data-cart-open]").forEach((el) => el.addEventListener("click", openCart));
+    $$("[data-cart-close]").forEach((el) => el.addEventListener("click", closeCart));
+    drawer.addEventListener("click", (event) => {
+      if (event.target === drawer) closeCart();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeCart();
     });
   }
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeCart();
-  });
 
-  window.addEventListener("aisha:cart", renderCartUI);
-  renderCartUI();
+  function renderOrder() {
+    const cart = Cart.read();
+    const lines = Cart.lines(cart);
+    const count = Cart.count(cart);
+    const total = Cart.money(Cart.total(cart));
 
-  const featured = document.querySelector("[data-featured-menu]");
-  if (featured) {
-    menu.items
-      .filter((item) => item.featured)
-      .slice(0, 3)
-      .forEach((item) => {
-        const card = document.createElement("article");
-        card.className = "dish-card";
-        card.appendChild(photo(item.name, item.image));
-        const body = document.createElement("div");
-        body.className = "body";
-        body.innerHTML =
-          "<h3></h3><p class=\"muted\"></p><div class=\"dish-meta\"></div><button class=\"btn btn-soft\" type=\"button\">Add to order</button>";
-        body.querySelector("h3").textContent = item.name;
-        body.querySelector("p").textContent = item.blurb;
-        body.querySelector(".dish-meta").textContent =
-          item.serves + " · " + Cart.money(item.price);
-        body.querySelector("button").addEventListener("click", () => {
-          Cart.add(item.id, 1);
-          openCart();
-        });
-        card.appendChild(body);
-        featured.appendChild(card);
+    $$("[data-cart-count]").forEach((el) => {
+      el.textContent = String(count);
+      el.hidden = count === 0;
+    });
+    $$("[data-cart-total]").forEach((el) => {
+      el.textContent = total;
+    });
+    $$("[data-header-checkout]").forEach((el) => {
+      el.hidden = count === 0;
+    });
+    $$("[data-cart-open]").forEach((el) => {
+      if (el.classList.contains("order-btn")) {
+        el.setAttribute("aria-label", "Your order, " + plural(count, "item"));
+      }
+    });
+
+    if (cartBody) {
+      rerender(cartBody, () => {
+        if (!lines.length) {
+          const empty = document.createElement("p");
+          empty.className = "cart-empty";
+          empty.textContent = "Your order is empty. Add a dish from the menu to get started.";
+          cartBody.appendChild(empty);
+          return;
+        }
+        lines.forEach((line) => cartBody.appendChild(orderLine(line, "cart")));
       });
-  }
+      // The pressed button is gone once a dish drops to zero
+      if (drawer && !drawer.inert && !drawer.contains(document.activeElement)) {
+        const close = $("[data-cart-close]", drawer);
+        if (close) close.focus({ preventScroll: true });
+      }
+    }
+    if (cartFoot) cartFoot.hidden = lines.length === 0;
 
-  const filters = document.querySelector("[data-menu-filters]");
-  const journey = document.querySelector("[data-menu-journey]");
-  const track = document.querySelector("[data-journey-track]");
-  const viewport = document.querySelector("[data-journey-viewport]");
-  const indexEl = document.querySelector("[data-journey-index]");
-  const totalEl = document.querySelector("[data-journey-total]");
-  const progressEl = document.querySelector("[data-journey-progress]");
-
-  // 3D menu stage. The page scrollbar is the only thing that moves the deck:
-  // scroll position -> dish position -> one transform per card. Arrow keys,
-  // swipes, and clicks on side cards all work by moving that same scrollbar.
-  if (filters && journey && track && viewport && Cart) {
-    const sticky = journey.querySelector(".menu-journey-sticky");
-    const ambient = [...journey.querySelectorAll("[data-ambient]")];
-    const heroStage = document.querySelector(".loop-stage");
-    const heroPhoto = document.querySelector(".loop-photo");
-    const heroCopy = document.querySelector(".loop-copy");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-
-    const cats = ["All", ...menu.categories];
-    let active = "All";
-    let items = [];
-    let cards = [];
-    const m = { top: 0, per: 1, vh: 1, cardW: 0, wide: false, heroH: 0, w: 0, h: 0 };
-
-    // `to` is where the scrollbar says we are, `at` eases toward it.
-    const pos = { at: 0, to: 0 };
-    const enter = { at: 1, to: 1 };
-    const tilt = { x: 0, y: 0, toX: 0, toY: 0 };
-    let activeIdx = -1;
-    let ambientOn = 0;
-    let ambientTimer = 0;
-    let raf = 0;
-    let nav = { index: 0, time: -1e9 };
-    let resting = true;
-    let restTimer = 0;
-
-    function renderFilters() {
-      filters.innerHTML = "";
-      cats.forEach((cat) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "cat-pill";
-        btn.textContent = cat;
-        btn.setAttribute("aria-selected", cat === active ? "true" : "false");
-        btn.addEventListener("click", () => {
-          if (cat === active) return;
-          active = cat;
-          filters.querySelectorAll(".cat-pill").forEach((pill) => {
-            pill.setAttribute("aria-selected", pill === btn ? "true" : "false");
-          });
-          renderTrack();
-          // A new list starts on its first dish
-          if (window.scrollY > m.top) window.scrollTo(0, Math.ceil(m.top));
-          snap();
-        });
-        filters.appendChild(btn);
-      });
+    if (orderBar) {
+      orderBar.hidden = count === 0;
+      document.body.classList.toggle("has-order", count > 0);
+      const barCount = $("[data-order-bar-count]", orderBar);
+      if (barCount) barCount.textContent = plural(count, "item");
     }
 
-    function renderTrack() {
-      items =
-        active === "All" ? menu.items.slice() : menu.items.filter((i) => i.category === active);
-      track.innerHTML = "";
-      if (totalEl) totalEl.textContent = String(items.length || 0);
-
-      cards = items.map((item, i) => {
-        const el = document.createElement("article");
-        el.className = "journey-card";
-        el.dataset.index = String(i);
-
-        const pic = photo(item.name, item.image);
-        const img = pic.querySelector("img");
-        if (img) img.loading = "eager";
-        el.appendChild(pic);
-
-        const body = document.createElement("div");
-        body.className = "body";
-        body.innerHTML =
-          '<div class="top"><div><h3></h3><p class="muted"></p></div><div class="price"></div></div><p class="dish-meta"></p><button class="btn btn-primary" type="button">Add to order</button>';
-        body.querySelector("h3").textContent = item.name;
-        body.querySelector("p.muted").textContent = item.blurb;
-        body.querySelector(".price").textContent = Cart.money(item.price);
-        body.querySelector(".dish-meta").textContent = item.serves + " · " + item.category;
-        body.querySelector("button").addEventListener("click", () => {
-          Cart.add(item.id, 1);
-          openCart();
-        });
-        el.appendChild(body);
-
-        const shade = document.createElement("div");
-        shade.className = "card-shade";
-        const sheen = document.createElement("div");
-        sheen.className = "card-sheen";
-        el.append(shade, sheen);
-
-        track.appendChild(el);
-        return { el, img, shade, off: false };
+    const summary = $("[data-checkout-lines]");
+    if (summary) {
+      rerender(summary, () => {
+        if (!lines.length) {
+          const empty = document.createElement("p");
+          empty.className = "muted";
+          empty.textContent = "Your order is empty. Add dishes from the menu to continue.";
+          summary.appendChild(empty);
+          return;
+        }
+        lines.forEach((line) => summary.appendChild(orderLine(line, "summary")));
       });
+      const totalRow = $("[data-checkout-total-row]");
+      if (totalRow) totalRow.hidden = lines.length === 0;
+      const submit = $("[data-submit]");
+      if (submit) submit.disabled = lines.length === 0;
+    }
+  }
 
-      activeIdx = -1;
-      measure();
-      snap();
+  window.addEventListener("aisha:cart", renderOrder);
+  // Keep a second tab (menu in one, checkout in another) in step
+  window.addEventListener("storage", renderOrder);
+
+  /* ---------- Menu carousel ---------- */
+
+  // A native horizontal scroller with scroll snapping. Swiping sideways moves
+  // between dishes; swiping up or down scrolls the page as usual, because the
+  // scroller has nothing to scroll vertically. The 3D tilt is drawn on the card
+  // inside each slide, so the slides themselves (and their snap points) never
+  // move.
+  const scroller = $("[data-deck-scroller]");
+  if (scroller && data.items.length) {
+    const prevBtn = $("[data-deck-prev]");
+    const nextBtn = $("[data-deck-next]");
+    const dotsEl = $("[data-deck-dots]");
+    const ambient = $$("[data-ambient]");
+    const items = data.items;
+    const total = items.length;
+    let active = -1;
+    let step = 1;
+    let wide = false;
+    let raf = 0;
+    let ambientOn = 0;
+    let ambientTimer = 0;
+
+    const slides = items.map((item, i) => {
+      const el = document.createElement("li");
+      el.className = "slide";
+      el.dataset.index = String(i);
+
+      const card = document.createElement("article");
+      card.className = "card";
+      card.setAttribute("aria-label", item.name + ", dish " + (i + 1) + " of " + total);
+      card.appendChild(photo(item, i < 2));
+
+      const body = document.createElement("div");
+      body.className = "card-body";
+      body.innerHTML =
+        '<p class="card-tag"></p>' +
+        '<div class="card-title"><h2></h2><p class="price"></p></div>' +
+        '<p class="card-blurb"></p>' +
+        '<p class="card-meta"></p>' +
+        '<div class="card-action"></div>';
+      $(".card-tag", body).textContent = item.category;
+      $("h2", body).textContent = item.name;
+      $(".price", body).textContent = Cart.money(item.price);
+      $(".card-blurb", body).textContent = item.blurb;
+      $(".card-meta", body).textContent = item.serves;
+
+      const action = $(".card-action", body);
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "btn btn-primary btn-block";
+      addBtn.textContent = "Add to order";
+      addBtn.setAttribute("aria-label", "Add " + item.name + " to your order");
+      const qty = stepper(item);
+      qty.wrap.classList.add("stepper--card");
+      const inOrder = document.createElement("span");
+      inOrder.className = "stepper-label";
+      inOrder.textContent = "in your order";
+      qty.qty.after(inOrder);
+      addBtn.addEventListener("click", () => {
+        Cart.add(item.id, 1);
+        qty.plus.focus({ preventScroll: true });
+        if (live) live.textContent = item.name + " added to your order.";
+      });
+      action.append(addBtn, qty.wrap);
+      card.appendChild(body);
+
+      const shade = document.createElement("div");
+      shade.className = "card-shade";
+      card.appendChild(shade);
+
+      el.appendChild(card);
+      scroller.appendChild(el);
+
+      let dot = null;
+      if (dotsEl) {
+        dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "deck-dot";
+        dot.setAttribute("aria-label", item.name);
+        dot.addEventListener("click", () => goTo(i));
+        dotsEl.appendChild(dot);
+      }
+
+      return { item, el, card, shade, addBtn, qty, dot, center: 0 };
+    });
+
+    function syncActions() {
+      const cart = Cart.read();
+      slides.forEach((s) => {
+        const n = cart[s.item.id] || 0;
+        // Focus would be lost with the stepper when the last one is removed
+        if (n === 0 && s.qty.wrap.contains(document.activeElement)) {
+          s.addBtn.hidden = false;
+          s.addBtn.focus({ preventScroll: true });
+        }
+        s.addBtn.hidden = n > 0;
+        s.qty.wrap.hidden = n === 0;
+        s.qty.qty.textContent = String(n);
+      });
     }
 
     function measure() {
-      const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-      m.w = window.innerWidth;
-      m.h = vh;
-      m.vh = vh;
-      m.wide = m.w >= 900;
-      // Scroll distance per dish
-      m.per = Math.max(1, Math.round(vh * (m.wide ? 0.6 : 0.5)));
-      journey.style.height = Math.round(vh + Math.max(0, items.length - 1) * m.per) + "px";
-      m.top = journey.getBoundingClientRect().top + window.scrollY;
-      m.cardW = cards.length ? cards[0].el.offsetWidth : 0;
-      m.heroH = heroStage ? heroStage.offsetHeight : 0;
+      slides.forEach((s) => {
+        s.center = s.el.offsetLeft + s.el.offsetWidth / 2;
+      });
+      step = total > 1 ? slides[1].center - slides[0].center : slides[0].el.offsetWidth;
+      wide = window.innerWidth >= 900;
     }
 
-    // Scrollbar -> targets
-    function read() {
-      const n = items.length;
-      const y = window.scrollY;
-      const raw = n > 1 ? clamp((y - m.top) / m.per, 0, n - 1) : 0;
-      if (resting) {
-        // Scrolling has stopped: centre the nearest dish. Only the deck moves,
-        // the scrollbar is left exactly where the visitor put it.
-        pos.to = Math.round(raw);
-      } else {
-        // Linger on each dish and move quicker between them
-        const i = Math.floor(raw);
-        const f = raw - i;
-        pos.to = i + f - (0.55 * Math.sin(2 * Math.PI * f)) / (2 * Math.PI);
-      }
-      // 0 while the stage is still below the fold, 1 once it has arrived
-      enter.to = reduce.matches ? 1 : clamp((y - (m.top - m.vh)) / (m.vh * 0.85), 0, 1);
-    }
-
-    function setActive(idx) {
-      activeIdx = idx;
-      cards.forEach((c, i) => c.el.classList.toggle("is-active", i === idx));
-      if (indexEl) indexEl.textContent = String(idx + 1);
+    function setActive(i) {
+      active = i;
+      slides.forEach((s, n) => {
+        const on = n === i;
+        s.el.classList.toggle("is-active", on);
+        if (s.dot) {
+          if (on) s.dot.setAttribute("aria-current", "true");
+          else s.dot.removeAttribute("aria-current");
+        }
+      });
+      if (prevBtn) prevBtn.disabled = i <= 0;
+      if (nextBtn) nextBtn.disabled = i >= total - 1;
 
       // Swap the room light once the deck settles on a dish
       clearTimeout(ambientTimer);
       ambientTimer = setTimeout(() => {
-        const item = items[activeIdx];
-        if (!item || !item.image || ambient.length < 2) return;
+        const item = items[active];
+        if (!item || ambient.length < 2) return;
         ambientOn = 1 - ambientOn;
         ambient[ambientOn].style.backgroundImage = 'url("' + item.image + '")';
         ambient[ambientOn].classList.add("is-on");
         ambient[1 - ambientOn].classList.remove("is-on");
-      }, 160);
+      }, 140);
     }
 
     function draw() {
-      const n = cards.length;
-      // "Reduce motion" keeps the 3D layout (it only moves when you scroll) and
-      // drops the extras: fly-in, pointer tilt, and parallax.
-      const calm = reduce.matches;
-      const W = m.cardW;
-      const gapNear = W * (m.wide ? 0.9 : 0.93); // centre card to its neighbour
-      const gapFar = W * (m.wide ? 0.36 : 0.3); // cards fanned behind that
-      const angle = m.wide ? 48 : 38;
-      const depth = m.wide ? 260 : 190;
-      const reach = m.wide ? 3.4 : 1.9; // how many cards out stay visible
-      const intro = 1 - enter.at;
+      raf = 0;
+      const mid = scroller.scrollLeft + scroller.clientWidth / 2;
+      // The tilt stays on with "reduce motion": it is a layout that only moves
+      // under the visitor's own finger, not an animation that plays by itself.
+      const angle = wide ? 34 : 20;
+      const pull = wide ? 15 : 6; // % of card width neighbours tuck in by
+      const shrink = wide ? 0.1 : 0.06;
+      let nearest = 0;
+      let best = Infinity;
 
-      for (let i = 0; i < n; i++) {
-        const c = cards[i];
-        const d = i - pos.at;
+      for (let i = 0; i < total; i++) {
+        const s = slides[i];
+        const d = (s.center - mid) / step;
         const a = Math.abs(d);
-        const off = a > reach;
-        if (off !== c.off) {
-          c.off = off;
-          c.el.classList.toggle("is-off", off);
+        if (a < best) {
+          best = a;
+          nearest = i;
         }
-        if (off) continue;
-
         const t = clamp(d, -1, 1);
         const side = Math.abs(t);
-        const front = 1 - side;
-        const x = t * gapNear + (d - t) * gapFar;
-        const y = intro * 70;
-        const z = front * 40 - side * depth - Math.max(0, a - 1) * 110 - intro * 420;
-        const ry = -t * angle + front * tilt.x * 7;
-        const rx = intro * 14 - front * tilt.y * 5;
-        const s = 1 - side * 0.06;
-
-        c.el.style.transform =
-          "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px," + z.toFixed(1) + "px) " +
-          "rotateX(" + rx.toFixed(2) + "deg) rotateY(" + ry.toFixed(2) + "deg) " +
-          "scale(" + s.toFixed(3) + ")";
-        c.el.style.zIndex = String(100 - Math.round(a * 10));
-        c.el.style.opacity = (a > reach - 0.8 ? clamp((reach - a) / 0.8, 0, 1) : 1).toFixed(3);
-        c.shade.style.opacity = (clamp(a / 1.6, 0, 1) * 0.6).toFixed(3);
-        // Photo drifts against the card's travel, so the plate sits "inside" the frame
-        if (c.img) {
-          c.img.style.transform =
-            "translate3d(" + (calm ? 0 : -t * 6).toFixed(2) + "%,0,0) scale(1.16)";
-        }
+        s.card.style.transform =
+          "translate3d(" + (-t * pull).toFixed(2) + "%,0,0) " +
+          "rotateY(" + (-t * angle).toFixed(2) + "deg) " +
+          "scale(" + (1 - side * shrink).toFixed(3) + ")";
+        s.el.style.zIndex = String(10 - Math.min(9, Math.round(a * 3)));
+        s.shade.style.opacity = (clamp(a, 0, 1) * 0.55).toFixed(3);
       }
 
-      const idx = n ? clamp(Math.round(pos.at), 0, n - 1) : -1;
-      if (idx !== activeIdx) setActive(idx);
-      if (progressEl) {
-        progressEl.style.width = (n > 1 ? (pos.at / (n - 1)) * 100 : 100).toFixed(2) + "%";
-      }
-
-      if (!calm) {
-        // Moving the vanishing point with the pointer lets you look around the deck
-        track.style.perspectiveOrigin =
-          (50 + tilt.x * 5).toFixed(2) + "% " + (42 + tilt.y * 4).toFixed(2) + "%";
-        const frontCard = cards[idx];
-        if (frontCard) {
-          frontCard.el.style.setProperty("--mx", (50 + tilt.x * 45).toFixed(1) + "%");
-          frontCard.el.style.setProperty("--my", (20 + tilt.y * 50).toFixed(1) + "%");
-        }
-
-        // Hero photo falls away slower than the page
-        if (heroPhoto && m.heroH) {
-          const y = Math.min(window.scrollY, m.heroH + 80);
-          heroPhoto.style.transform =
-            "translate3d(0," + (y * 0.28).toFixed(1) + "px,0) scale(" + (1.06 + y * 0.00022).toFixed(4) + ")";
-          if (heroCopy) {
-            heroCopy.style.transform = "translate3d(0," + (y * 0.14).toFixed(1) + "px,0)";
-            heroCopy.style.opacity = clamp(1 - y / (m.heroH * 0.8), 0, 1).toFixed(3);
-          }
-        }
-      }
-    }
-
-    function frame() {
-      raf = 0;
-      // Easing stays on even with "reduce motion": browsers turn off their own
-      // smooth scrolling in that mode, so without it the deck moves in hard steps.
-      const k = 0.16;
-      let moving = false;
-      const ease = (cur, to, eps) => {
-        const d = to - cur;
-        if (Math.abs(d) < eps) return to;
-        moving = true;
-        return cur + d * k;
-      };
-      pos.at = ease(pos.at, pos.to, 0.0006);
-      enter.at = ease(enter.at, enter.to, 0.001);
-      tilt.x = ease(tilt.x, tilt.toX, 0.002);
-      tilt.y = ease(tilt.y, tilt.toY, 0.002);
-      draw();
-      if (moving) schedule();
+      if (nearest !== active) setActive(nearest);
     }
 
     function schedule() {
-      if (!raf) raf = requestAnimationFrame(frame);
+      if (!raf) raf = requestAnimationFrame(draw);
     }
 
-    // Jump straight to the scrollbar's position, no easing
-    function snap() {
-      read();
-      pos.at = pos.to;
-      enter.at = enter.to;
-      draw();
-    }
-
-    function current() {
-      if (performance.now() - nav.time < 700) return nav.index;
-      const n = items.length;
-      return n > 1 ? clamp(Math.round((window.scrollY - m.top) / m.per), 0, n - 1) : 0;
-    }
-
-    function goTo(i) {
-      const n = items.length;
-      if (!n) return;
-      const idx = clamp(i, 0, n - 1);
-      nav = { index: idx, time: performance.now() };
-      window.scrollTo({
-        top: Math.ceil(m.top + idx * m.per),
-        behavior: reduce.matches ? "auto" : "smooth",
+    function goTo(i, instant) {
+      const s = slides[clamp(i, 0, total - 1)];
+      scroller.scrollTo({
+        left: s.center - scroller.clientWidth / 2,
+        // Browsers drop the glide themselves when "reduce motion" is on
+        behavior: instant ? "auto" : "smooth",
       });
     }
 
-    // Click a side card to bring that dish forward
-    track.addEventListener("click", (event) => {
-      const el = event.target.closest(".journey-card");
+    scroller.addEventListener("scroll", schedule, { passive: true });
+
+    if (prevBtn) prevBtn.addEventListener("click", () => goTo(active - 1));
+    if (nextBtn) nextBtn.addEventListener("click", () => goTo(active + 1));
+
+    // Tap or click a side card to bring that dish forward
+    scroller.addEventListener("click", (event) => {
+      const el = event.target.closest(".slide");
       if (!el) return;
       const i = Number(el.dataset.index);
-      if (i !== activeIdx) goTo(i);
+      if (i !== active) goTo(i);
     });
 
     // Tabbing onto a side card's button brings that dish forward too
-    track.addEventListener("focusin", (event) => {
-      const el = event.target.closest(".journey-card");
+    scroller.addEventListener("focusin", (event) => {
+      const el = event.target.closest(".slide");
       if (!el) return;
       const i = Number(el.dataset.index);
-      if (i !== current()) goTo(i);
+      if (i !== active) goTo(i);
     });
 
-    // Left / right step one dish. Handling them here also stops a browser text
-    // cursor (Chrome caret browsing, F7) from walking through the page instead.
+    // Left / right step one dish. Handling the keys here also stops a browser
+    // text cursor (Chrome caret browsing, F7) from walking through the page.
     document.addEventListener("keydown", (event) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -469,133 +437,110 @@
       const el = event.target;
       if (el && el.closest && el.closest("input, textarea, select, [contenteditable]")) return;
       event.preventDefault();
-      const dir = event.key === "ArrowRight" ? 1 : -1;
-      const cur = current();
-      // Already on the first dish and not yet in the stage: nothing to step back to
-      if (dir < 0 && cur === 0 && window.scrollY < m.top - 2) return;
-      goTo(cur + dir);
+      goTo(active + (event.key === "ArrowRight" ? 1 : -1));
     });
 
-    if (sticky) {
-      sticky.addEventListener("pointermove", (event) => {
-        if (event.pointerType !== "mouse" || reduce.matches) return;
-        tilt.toX = clamp((event.clientX / window.innerWidth - 0.5) * 2, -1, 1);
-        tilt.toY = clamp((event.clientY / window.innerHeight - 0.5) * 2, -1, 1);
-        schedule();
-      });
-      sticky.addEventListener("pointerleave", () => {
-        tilt.toX = 0;
-        tilt.toY = 0;
-        schedule();
-      });
-
-      // Sideways swipe on touch steps one dish
-      let touch = null;
-      sticky.addEventListener(
-        "touchstart",
-        (event) => {
-          const t = event.touches[0];
-          const onPills = event.target.closest && event.target.closest(".cat-pills");
-          touch = t && !onPills ? { x: t.clientX, y: t.clientY } : null;
-        },
-        { passive: true }
-      );
-      sticky.addEventListener(
-        "touchend",
-        (event) => {
-          const t = event.changedTouches[0];
-          if (!touch || !t) return;
-          const dx = t.clientX - touch.x;
-          const dy = t.clientY - touch.y;
-          touch = null;
-          if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-            goTo(current() + (dx < 0 ? 1 : -1));
-          }
-        },
-        { passive: true }
-      );
-    }
-
-    window.addEventListener(
-      "scroll",
-      () => {
-        resting = false;
-        read();
-        schedule();
-        clearTimeout(restTimer);
-        restTimer = setTimeout(() => {
-          resting = true;
-          read();
-          schedule();
-        }, 160);
-      },
-      { passive: true }
-    );
-
     let resizeRaf = 0;
-    function onResize(force) {
-      const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-      // A phone's address bar sliding away changes the height a little on every
-      // scroll. Re-measuring for that would make the deck jump mid-scroll.
-      if (force !== true && window.innerWidth === m.w && Math.abs(vh - m.h) < 160) return;
+    function onResize() {
       cancelAnimationFrame(resizeRaf);
       resizeRaf = requestAnimationFrame(() => {
+        const keep = Math.max(0, active);
         measure();
-        snap();
+        goTo(keep, true);
+        draw();
       });
     }
     window.addEventListener("resize", onResize);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
-    window.addEventListener("load", () => onResize(true));
+    window.addEventListener("load", onResize);
+    window.addEventListener("aisha:cart", syncActions);
+    window.addEventListener("storage", syncActions);
 
-    renderFilters();
-    renderTrack();
+    syncActions();
+    measure();
+    draw();
   }
 
-  const checkoutForm = document.getElementById("checkout-form");
-  if (checkoutForm && Cart) {
-    const error = checkoutForm.querySelector("[data-form-error]");
-    const success = checkoutForm.querySelector("[data-form-success]");
+  /* ---------- Checkout ---------- */
 
-    checkoutForm.addEventListener("submit", (event) => {
+  const form = $("#checkout-form");
+  if (form) {
+    const errorEl = $("[data-form-error]", form);
+    const submit = $("[data-submit]", form);
+    const addressWrap = $("[data-delivery-only]", form);
+    const addressInput = form.elements.address;
+    const whenInput = form.elements.when;
+    const whenLabel = $("[data-when-label]", form);
+
+    // Earliest selectable time is now, in the visitor's own time zone
+    if (whenInput) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      whenInput.min = now.toISOString().slice(0, 16);
+    }
+
+    function syncFulfillment() {
+      const delivery = form.elements.fulfillment.value === "delivery";
+      if (addressWrap) addressWrap.hidden = !delivery;
+      if (addressInput) addressInput.required = delivery;
+      if (whenLabel) whenLabel.textContent = (delivery ? "Delivery" : "Pickup") + " date and time";
+    }
+    $$('input[name="fulfillment"]', form).forEach((el) => el.addEventListener("change", syncFulfillment));
+    syncFulfillment();
+
+    function showError(message) {
+      if (!errorEl) return;
+      errorEl.textContent = message;
+      errorEl.hidden = !message;
+    }
+
+    function showDone(payload, orderId) {
+      const done = $("[data-checkout-done]");
+      const layout = $("[data-checkout]");
+      const head = $("[data-checkout-head]");
+      if (!done) return;
+      const first = payload.name.trim().split(/\s+/)[0];
+      $("[data-done-name]", done).textContent = first ? ", " + first : "";
+      $("[data-done-ref]", done).textContent = orderId
+        ? " (reference " + String(orderId).slice(0, 8).toUpperCase() + ")"
+        : "";
+      $("[data-done-phone]", done).textContent = payload.phone;
+      if (layout) layout.hidden = true;
+      if (head) head.hidden = true;
+      done.hidden = false;
+      done.focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    }
+
+    form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (error) {
-        error.hidden = true;
-        error.textContent = "";
-      }
-      if (success) success.hidden = true;
+      showError("");
 
-      const cart = Cart.read();
-      if (!Cart.count(cart)) {
-        if (error) {
-          error.hidden = false;
-          error.textContent = "Your order is empty. Add dishes from the menu first.";
-        }
+      const lines = Cart.lines(Cart.read());
+      if (!lines.length) {
+        showError("Your order is empty. Add dishes from the menu to continue.");
+        return;
+      }
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        showError("Please complete the required fields.");
         return;
       }
 
-      if (!checkoutForm.checkValidity()) {
-        checkoutForm.reportValidity();
-        if (error) {
-          error.hidden = false;
-          error.textContent = "Fill the required fields so we can cook this order.";
-        }
-        return;
-      }
-
-      const data = Object.fromEntries(new FormData(checkoutForm).entries());
+      const fields = Object.fromEntries(new FormData(form).entries());
       const payload = {
-        name: data.name,
-        phone: data.phone,
-        email: data.email,
-        notes: data.notes,
-        address: data.address,
-        fulfillment: data.fulfillment || "pickup",
-        items: Cart.lines(cart).map((line) => ({ id: line.id, qty: line.qty })),
+        name: fields.name || "",
+        phone: fields.phone || "",
+        email: fields.email || "",
+        fulfillment: fields.fulfillment === "delivery" ? "delivery" : "pickup",
+        address: fields.fulfillment === "delivery" ? fields.address || "" : "",
+        when: fields.when || "",
+        notes: fields.notes || "",
+        items: lines.map((line) => ({ id: line.id, qty: line.qty })),
       };
 
-      const submitBtn = checkoutForm.querySelector('[type="submit"]');
-      if (submitBtn) submitBtn.disabled = true;
+      const label = submit.textContent;
+      submit.disabled = true;
+      submit.textContent = "Sending your order…";
 
       fetch("/api/orders", {
         method: "POST",
@@ -604,50 +549,28 @@
       })
         .then(async (res) => {
           const body = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(body.error || "Order failed");
-          try {
-            const key = "aishas-catering-orders";
-            const prev = JSON.parse(localStorage.getItem(key) || "[]");
-            prev.push({ ...payload, orderId: body.orderId, placedAt: new Date().toISOString() });
-            localStorage.setItem(key, JSON.stringify(prev));
-          } catch (_) {}
+          if (!res.ok || !body.ok) {
+            const problem = new Error("Order rejected");
+            // Only a 4xx reply carries a message written for the customer
+            problem.forCustomer = res.status >= 400 && res.status < 500 && body.error ? body.error : "";
+            throw problem;
+          }
           Cart.clear();
-          checkoutForm.reset();
-          if (success) {
-            success.hidden = false;
-            success.textContent =
-              "Order received" + (body.orderId ? " · #" + String(body.orderId).slice(0, 8) : "") + ". We'll confirm by phone.";
-          }
+          showDone(payload, body.orderId);
         })
-        .catch(() => {
-          // Offline / GitHub Pages / API down: keep the order locally.
-          try {
-            const key = "aishas-catering-orders";
-            const prev = JSON.parse(localStorage.getItem(key) || "[]");
-            const orderId = "local-" + Date.now().toString(36);
-            prev.push({ ...payload, orderId, placedAt: new Date().toISOString() });
-            localStorage.setItem(key, JSON.stringify(prev));
-            Cart.clear();
-            checkoutForm.reset();
-            if (success) {
-              success.hidden = false;
-              success.textContent =
-                "Order saved · #" + orderId.slice(0, 12) + ". We'll confirm by phone.";
-            }
-            if (error) {
-              error.hidden = true;
-              error.textContent = "";
-            }
-          } catch (_) {
-            if (error) {
-              error.hidden = false;
-              error.textContent = "Could not place order. Try again.";
-            }
-          }
+        .catch((err) => {
+          // The order did not reach the kitchen, so say so. The dishes and the
+          // form stay exactly as they were for another try.
+          const reason = (err && err.forCustomer) || "We could not send your order.";
+          const fallback = phone ? "Please try again, or call us at " + phone + "." : "Please try again.";
+          showError(reason + " " + fallback);
         })
         .finally(() => {
-          if (submitBtn) submitBtn.disabled = false;
+          submit.textContent = label;
+          submit.disabled = Cart.count(Cart.read()) === 0;
         });
     });
   }
+
+  renderOrder();
 })();

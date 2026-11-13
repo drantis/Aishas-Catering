@@ -1,18 +1,11 @@
-const fs = require("fs");
-const path = require("path");
 const { randomUUID } = require("crypto");
-
-function loadMenuItems() {
-  const file = path.join(process.cwd(), "menu-data.js");
-  const raw = fs.readFileSync(file, "utf8");
-  const match = raw.match(/window\.AISHA_MENU\s*=\s*(\{[\s\S]*\});?\s*$/);
-  if (!match) return [];
-  // eslint-disable-next-line no-new-func
-  const menu = Function("return (" + match[1] + ")")();
-  return menu.items || [];
-}
+const menu = require("../menu-data.js");
 
 function readBody(req) {
+  // Vercel parses JSON bodies before the handler runs
+  if (req.body && typeof req.body === "object") return Promise.resolve(req.body);
+  if (typeof req.body === "string") return Promise.resolve(JSON.parse(req.body || "{}"));
+
   return new Promise((resolve, reject) => {
     let data = "";
     req.on("data", (chunk) => {
@@ -33,6 +26,8 @@ function readBody(req) {
   });
 }
 
+const text = (value, max) => String(value == null ? "" : value).trim().slice(0, max);
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -43,85 +38,85 @@ module.exports = async function handler(req, res) {
     return res.end();
   }
 
-  if (req.method !== "POST") {
-    res.statusCode = 405;
-    res.setHeader("Content-Type", "application/json");
-    return res.end(JSON.stringify({ error: "Method not allowed" }));
-  }
+  res.setHeader("Content-Type", "application/json");
+  const reply = (status, payload) => {
+    res.statusCode = status;
+    res.end(JSON.stringify(payload));
+  };
 
+  if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
+
+  let body;
   try {
-    const body = await readBody(req);
-    const items = Array.isArray(body.items) ? body.items : [];
-    const menu = loadMenuItems();
-    const byId = Object.fromEntries(menu.map((item) => [item.id, item]));
-
-    const lines = items
-      .map((line) => {
-        const dish = byId[line.id];
-        if (!dish) return null;
-        const qty = Math.max(1, Math.min(50, Number(line.qty) || 1));
-        return {
-          id: dish.id,
-          name: dish.name,
-          qty,
-          unitPrice: dish.price,
-          lineTotal: dish.price * qty,
-        };
-      })
-      .filter(Boolean);
-
-    if (!lines.length) {
-      res.statusCode = 400;
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify({ error: "Cart is empty or items are invalid" }));
-    }
-
-    const fulfillment = body.fulfillment === "delivery" ? "delivery" : "pickup";
-    const customer = {
-      name: String(body.name || "").trim().slice(0, 120),
-      phone: String(body.phone || "").trim().slice(0, 40),
-      email: String(body.email || "").trim().slice(0, 120),
-      notes: String(body.notes || "").trim().slice(0, 500),
-      address: fulfillment === "delivery" ? String(body.address || "").trim().slice(0, 240) : "",
-    };
-
-    if (!customer.name || !customer.phone) {
-      res.statusCode = 400;
-      res.setHeader("Content-Type", "application/json");
-      return res.end(JSON.stringify({ error: "Name and phone are required" }));
-    }
-
-    const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
-    const order = {
-      id: randomUUID(),
-      createdAt: new Date().toISOString(),
-      status: "received",
-      fulfillment,
-      customer,
-      lines,
-      subtotal,
-      currency: "CAD",
-    };
-
-    // Demo store: durable DB comes later. Vercel serverless keeps this in-memory
-    // per instance — response still confirms the API path for the portfolio.
-    globalThis.__AISHA_ORDERS__ = globalThis.__AISHA_ORDERS__ || [];
-    globalThis.__AISHA_ORDERS__.push(order);
-
-    res.statusCode = 201;
-    res.setHeader("Content-Type", "application/json");
-    res.end(
-      JSON.stringify({
-        ok: true,
-        orderId: order.id,
-        status: order.status,
-        subtotal: order.subtotal,
-        message: "Order received. The kitchen will confirm by phone.",
-      })
-    );
+    body = await readBody(req);
   } catch (err) {
-    res.statusCode = 400;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "Could not place order", detail: String(err.message || err) }));
+    return reply(400, { error: "We could not read your order." });
   }
+  if (!body || typeof body !== "object") body = {};
+
+  // Prices always come from the menu, never from the browser. The 4xx messages
+  // below are shown to the customer as written.
+  const byId = Object.fromEntries((menu.items || []).map((item) => [item.id, item]));
+  const lines = (Array.isArray(body.items) ? body.items : [])
+    .map((line) => {
+      const dish = line && byId[line.id];
+      if (!dish) return null;
+      const qty = Math.max(1, Math.min(50, Math.floor(Number(line.qty)) || 1));
+      return {
+        id: dish.id,
+        name: dish.name,
+        qty,
+        unitPrice: dish.price,
+        lineTotal: dish.price * qty,
+      };
+    })
+    .filter(Boolean);
+
+  if (!lines.length) {
+    return reply(400, { error: "Your order is empty. Please add a dish from the menu." });
+  }
+
+  const fulfillment = body.fulfillment === "delivery" ? "delivery" : "pickup";
+  const customer = {
+    name: text(body.name, 120),
+    phone: text(body.phone, 40),
+    email: text(body.email, 120),
+    notes: text(body.notes, 500),
+    address: fulfillment === "delivery" ? text(body.address, 240) : "",
+  };
+  const when = text(body.when, 40);
+
+  if (!customer.name || !customer.phone) {
+    return reply(400, { error: "Please enter your name and phone number." });
+  }
+  if (fulfillment === "delivery" && !customer.address) {
+    return reply(400, { error: "Please enter a delivery address." });
+  }
+  if (!when) {
+    return reply(400, { error: "Please choose the date and time you need your order." });
+  }
+
+  const order = {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    status: "received",
+    fulfillment,
+    when,
+    customer,
+    lines,
+    subtotal: lines.reduce((sum, line) => sum + line.lineTotal, 0),
+    currency: "CAD",
+  };
+
+  // TODO before taking real orders: send this to the kitchen (email, SMS or
+  // WhatsApp). Nothing here notifies anyone yet. Until then the order is only
+  // written to the function log, which is where to look for it in Vercel.
+  console.log("NEW ORDER " + JSON.stringify(order));
+
+  reply(201, {
+    ok: true,
+    orderId: order.id,
+    status: order.status,
+    subtotal: order.subtotal,
+  });
 };

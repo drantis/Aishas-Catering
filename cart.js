@@ -29,8 +29,10 @@
     return lines(cart).reduce((sum, line) => sum + line.lineTotal, 0);
   }
 
+  // Counted from the lines, so a dish that is no longer on the menu (left over
+  // in a returning visitor's saved order) never inflates the badge.
   function count(cart) {
-    return Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+    return lines(cart).reduce((sum, line) => sum + line.qty, 0);
   }
 
   function money(n) {

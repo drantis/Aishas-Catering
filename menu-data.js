@@ -1,60 +1,64 @@
-window.AISHA_MENU = {
-  categories: ["Starters", "Mains"],
+// The whole menu lives in this file. Edit a dish here and both the site and the
+// order API pick it up.
+var AISHA_MENU = {
+  // Contact details shown in the footer and in checkout messages.
+  // Leave a field empty and it stays hidden on the site.
+  business: {
+    phone: "",
+    email: "",
+    area: "",
+  },
+  categories: ["Mains", "Starters"],
   items: [
-    {
-      id: "akara-yaji",
-      name: "Akara & Yaji",
-      category: "Starters",
-      blurb:
-        "Crispy bean cakes (akara), served with yaji — a warm Nigerian spice mix of ground pepper, peanut, and seasoning.",
-      serves: "Feeds 8–10",
-      price: 32,
-      featured: true,
-      image: "images/akara.jpg",
-    },
     {
       id: "jollof-rice",
       name: "Jollof Rice",
       category: "Mains",
       blurb:
-        "Party-style tomato rice, cooked down with peppers, onion, and spice until every grain is seasoned.",
-      serves: "Feeds 10–12",
+        "Long-grain rice simmered in a rich tomato and pepper base until every grain is seasoned through.",
+      serves: "Serves 10–12",
       price: 48,
-      featured: true,
       image: "images/jollof.jpg",
     },
     {
       id: "pepper-chicken",
       name: "Pepper Chicken",
       category: "Mains",
-      blurb:
-        "Chicken pieces tossed in a hot pepper sauce — bold, smoky, and made to sit next to rice on the table.",
-      serves: "Feeds 8–10",
+      blurb: "Chicken finished in a bold, spicy pepper sauce. A natural partner for jollof.",
+      serves: "Serves 8–10",
       price: 58,
-      featured: true,
       image: "images/pepper-chicken.jpg",
     },
     {
       id: "tortilla-kebab",
       name: "Tortilla Kebab Skewer",
       category: "Mains",
-      blurb:
-        "Grilled kebab skewers wrapped or plated with soft tortilla — easy to pass around for parties and trays.",
-      serves: "Feeds 8–10",
+      blurb: "Seasoned kebab skewers, grilled and served with soft tortillas. Easy to share.",
+      serves: "Serves 8–10",
       price: 54,
-      featured: true,
       image: "images/kebab.jpg",
     },
     {
       id: "jamaican-oxtail",
       name: "Jamaican Oxtail",
       category: "Mains",
-      blurb:
-        "Slow-braised oxtail in a rich Jamaican gravy — soft, sticky, and ready to spoon over rice.",
-      serves: "Feeds 6–8",
+      blurb: "Oxtail braised low and slow until tender, served in its own rich gravy.",
+      serves: "Serves 6–8",
       price: 78,
-      featured: true,
       image: "images/oxtail.jpg",
+    },
+    {
+      id: "akara-yaji",
+      name: "Akara & Yaji",
+      category: "Starters",
+      blurb:
+        "Crisp black-eyed pea fritters with yaji, a Nigerian pepper spice traditionally made with peanut.",
+      serves: "Serves 8–10",
+      price: 32,
+      image: "images/akara.jpg",
     },
   ],
 };
+
+// Lets the order API read the same menu the site shows.
+if (typeof module !== "undefined") module.exports = AISHA_MENU;

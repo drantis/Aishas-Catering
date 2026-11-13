@@ -2,146 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Menu — Aisha's Catering</title>
-    <meta name="description" content="Scroll through Aisha's Catering menu and add dishes to your order." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aisha's Catering</title>
+    <!-- The menu is now the home page. This keeps older links working. -->
+    <meta http-equiv="refresh" content="0; url=./" />
+    <link rel="canonical" href="./" />
+    <script>
+      location.replace("./");
+    </script>
   </head>
-  <body class="page-menu">
-    <a class="skip" href="#menu-journey" aria-label="Skip to dishes" data-label="Skip to dishes"></a>
-
-    <header class="site-header">
-      <div class="shell header-inner">
-        <div class="brand-lockup">
-          <a class="brand" href="index.html">
-            <span class="brand-mark">A</span>
-            <span class="brand-name">Aisha's Catering</span>
-          </a>
-          <span class="halal-sticker halal-sticker--nav" title="Halal kitchen">
-            <img src="images/halal-sticker.png" alt="Halal" width="38" height="38" />
-          </span>
-        </div>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-nav-toggle>
-          <span class="sr-only">Menu</span>
-          <span></span><span></span>
-        </button>
-        <nav class="site-nav" id="site-nav" data-nav>
-          <a href="menu.html" aria-current="page">Menu</a>
-          <a href="index.html#favorites">Favorites</a>
-          <button type="button" class="nav-cta" data-cart-open>
-            Cart <span class="cart-count" data-cart-count>0</span>
-          </button>
-        </nav>
-      </div>
-    </header>
-
-    <main>
-      <section class="loop-stage" aria-label="Ambient kitchen loop">
-        <div class="loop-photo" aria-hidden="true"></div>
-        <canvas class="loop-canvas" data-loop-canvas></canvas>
-        <div class="loop-veil"></div>
-        <div class="shell loop-copy">
-          <p class="eyebrow">Tonight’s menu</p>
-          <h1>Pick what you want on the table.</h1>
-          <p class="lede">
-            Keep scrolling. The dishes move with you — add what you want, then checkout.
-          </p>
-          <p class="scroll-hint"><i aria-hidden="true"></i> Scroll to enter the menu</p>
-        </div>
-      </section>
-
-      <section class="menu-journey" id="menu-journey" data-menu-journey>
-        <div class="menu-journey-sticky">
-          <div class="journey-ambient" aria-hidden="true">
-            <div class="journey-ambient-layer" data-ambient></div>
-            <div class="journey-ambient-layer" data-ambient></div>
-          </div>
-
-          <div class="shell menu-journey-bar">
-            <div>
-              <p class="eyebrow">Menu</p>
-              <p class="journey-count"><span data-journey-index>1</span> / <span data-journey-total>0</span></p>
-            </div>
-            <div class="cat-pills" data-menu-filters role="tablist" aria-label="Filter dishes"></div>
-            <div class="journey-progress" aria-hidden="true">
-              <span data-journey-progress></span>
-            </div>
-          </div>
-
-          <div class="menu-journey-viewport" data-journey-viewport>
-            <div class="menu-journey-track" data-journey-track></div>
-          </div>
-
-          <div class="shell journey-hint">
-            <p class="muted">
-              <span class="hint-keys">Scroll or press ← → to move through dishes</span>
-              <span class="hint-touch">Scroll or swipe to move through dishes</span>
-            </p>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <div class="shell footer-grid">
-        <div>
-          <div class="footer-brand-row">
-            <div>
-              <p class="brand-name">Aisha's Catering</p>
-              <p class="muted">Placeholder City</p>
-            </div>
-            <span class="halal-sticker halal-sticker--footer" title="Halal kitchen">
-              <img src="images/halal-sticker.png" alt="Halal" width="50" height="50" />
-            </span>
-          </div>
-        </div>
-        <div>
-          <p class="footer-label">Find us</p>
-          <p class="muted">Address placeholder<br />City, Region</p>
-        </div>
-        <div>
-          <p class="footer-label">Call / text</p>
-          <p class="muted"><a href="tel:+10000000000">(000) 000-0000</a></p>
-        </div>
-        <div>
-          <p class="footer-label">Order</p>
-          <p class="muted footer-links">
-            <a href="menu.html">Menu</a>
-            <a href="checkout.html">Checkout</a>
-          </p>
-        </div>
-      </div>
-      <div class="shell footer-base">
-        <p>© <span data-year></span> Aisha's Catering</p>
-      </div>
-    </footer>
-
-    <aside class="cart-drawer" data-cart-drawer aria-hidden="true">
-      <div class="cart-panel">
-        <div class="cart-head">
-          <h2>Your order</h2>
-          <button type="button" class="icon-btn" data-cart-close aria-label="Close cart">×</button>
-        </div>
-        <div class="cart-body" data-cart-body></div>
-        <div class="cart-foot">
-          <div class="cart-total">
-            <span>Total</span>
-            <strong data-cart-total>$0</strong>
-          </div>
-          <a class="btn btn-primary btn-block" href="checkout.html">Go to checkout</a>
-        </div>
-      </div>
-    </aside>
-
-    <script src="menu-data.js"></script>
-    <script src="cart.js"></script>
-    <script src="loop.js"></script>
-    <script src="main.js"></script>
+  <body>
+    <p><a href="./">View the menu</a></p>
   </body>
 </html>
